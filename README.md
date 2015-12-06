@@ -1,6 +1,6 @@
 # gostress
 
-HTTP/HTTPS stress test tool.
+HTTP/HTTPS stress test framework.
 
 ```go
 package main
