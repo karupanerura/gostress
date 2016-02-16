@@ -1,0 +1,186 @@
+Implementation of gostress
+Shibuya.go #1
+
+20:00 16 Feb 2016
+Tags: #shibuyago
+
+id:karupanerura
+https://karupas.org/
+
+* About me
+
+- id:karupanerura
+- Perl/Go/Swift/Kotlin/Java/Crystal/etc...
+- Senior Engineer at Mobile Factory, Inc.
+
+.image http://karupas.org/img/karupanerura.png
+
+* gostress
+
+* gostress is ...
+
+- HTTP/HTTPS stress test tool
+- (will) supports HTTP/2 by net/http in Go 1.6
+- write scenarios as a code in Go language
+- my first go product
+
+* Motivation
+
+* SPEC(client)
+
+- Network: 1Gbps
+- CPU: Core i7 2.5GHz (4core/HT)
+- Memory: 16GB DDR3
+- Users/MaxIdleConnsPerHost: over 2000
+- Scenario: real play scenario
+
+* SPEC(server)
+
+- Network: 1Gbps
+- Social Game
+
+* Result
+
+200Mbps available!
+
+* Usage
+
+* Make a http client
+
+    client := gostress.NewHttpClient(
+            gostress.HttpClientConfig{
+            	Server: gostress.ServerConfig{
+            		Hostname: "myhost.com",
+            		Secure: false,
+            	},
+            	Headers: map[string]string{},
+            	UserAgent: "Gostress/alpha",
+            	MaxIdleConnsPerHost: 1024,
+            	RequestEncoder: &gostress.JsonRequestEncoder{},
+            	ResponseDecoder: &gostress.JsonResponseDecoder{},
+            },
+    )
+
+
+* Make a scenario context
+
+    context := gostress.NewScenarioContext(client, nil)
+
+* Make a scenario and run it
+
+    scenario := makeScenario()
+    context.Run(scenario)
+
+* Implementation
+
+* Scenario
+
+    type Scenario interface {
+            run(*ScenarioContext) chan struct{}
+    }
+
+* ScenarioContext
+
+    func (c *ScenarioContext) Run(scenario Scenario) {
+            done := scenario.run(c)
+            <-done
+            close(done)
+            c.wg.Wait()
+    }
+
+* NoopScenario
+
+no operation
+
+    type NoopScenario struct {
+    }
+
+    func (scenario *NoopScenario) run(_ *ScenarioContext) <-chan struct{} {
+            ch := make(chan struct{}, 1)
+            ch <- struct{}{}
+            return ch
+    }
+
+* DeferScenario
+
+defer to decide scenario
+
+    type DeferScenario struct {
+            Defer func(ScenarioState) Scenario
+    }
+
+    func (scenario *DeferScenario) run(c *ScenarioContext) <-chan struct{} {
+            next := scenario.Defer(c.State)
+            return next.run(c)
+    }
+
+* DelayScenario
+
+    type DelayScenario struct {
+            Duration   time.Duration
+            Scenario   Scenario
+            OnComplete func(ScenarioState)
+    }
+
+    func (scenario *DelayScenario) run(c *ScenarioContext) <-chan struct{} {
+            ch := make(chan struct{}, 1)
+            ch <- struct{}{}
+            close(ch)
+
+            c.wg.Add(1)
+            go func() {
+            	time.Sleep(scenario.Duration)
+            	ch := scenario.Scenario.run(c)
+            	<-ch
+            	if cb := scenario.OnComplete; cb != nil {
+            		cb(c.State)
+            	}
+            	c.wg.Done()
+            }()
+            return ch
+    }
+
+
+* HttpScenario
+
+send http request
+
+    type HttpScenario struct {
+            Method     string
+            Path       string
+            Headers    map[string]string
+            Content    interface{}
+            BeforeRun  func(ScenarioState, *HttpScenario)
+            OnComplete func(ScenarioState, *HttpResponse, time.Duration)
+            OnError    func(ScenarioState, error)
+    }
+
+.link https://github.com/karupanerura/gostress/blob/master/scenario_group.go
+
+* ScenarioGroup
+
+    type ScenarioGroup struct {
+            scenarios  []Scenario
+            OnComplete func(ScenarioState, time.Duration)
+    }
+
+    type ConcurrentScenarioGroup struct {
+            ScenarioGroup
+    }
+
+    type SeriesScenarioGroup struct {
+            ScenarioGroup
+            MaxInterval time.Duration
+            MinInterval time.Duration
+    }
+
+.link https://github.com/karupanerura/gostress/blob/master/scenario_group.go
+
+* Impressions of Go language
+
+- Easy to write concurrent processing by channel/goroutine
+- Very good!
+
+* that's all
+
+thank you for listening
