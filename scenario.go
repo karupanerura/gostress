@@ -2,12 +2,10 @@ package gostress
 
 import "sync"
 
-type done struct{}
-
 type ScenarioState interface{}
 
 type Scenario interface {
-	run(*ScenarioContext) <-chan done
+	run(*ScenarioContext) chan struct{}
 }
 
 type ScenarioContext struct {
@@ -27,5 +25,6 @@ func NewScenarioContext(client *HttpClient, state ScenarioState) *ScenarioContex
 func (c *ScenarioContext) Run(scenario Scenario) {
 	done := scenario.run(c)
 	<-done
+	close(done)
 	c.wg.Wait()
 }

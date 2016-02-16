@@ -9,15 +9,14 @@ type SleepScenario struct {
 	OnComplete func(ScenarioState)
 }
 
-func (scenario *SleepScenario) run(c *ScenarioContext) <-chan done {
-	ch := make(chan done, 1)
+func (scenario *SleepScenario) run(c *ScenarioContext) chan struct{} {
+	ch := make(chan struct{}, 1)
 	go func() {
 		time.Sleep(scenario.Duration)
 		if cb := scenario.OnComplete; cb != nil {
 			cb(c.State)
 		}
-		ch <- done{}
-		close(ch)
+		ch <- struct{}{}
 	}()
 	return ch
 }

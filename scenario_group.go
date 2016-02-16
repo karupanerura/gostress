@@ -60,8 +60,8 @@ func (c *SeriesScenarioGroup) Next(scenario Scenario) *SeriesScenarioGroup {
 	return c
 }
 
-func (group *ConcurrentScenarioGroup) run(c *ScenarioContext) <-chan done {
-	ch := make(chan done, 1)
+func (group *ConcurrentScenarioGroup) run(c *ScenarioContext) chan struct{} {
+	ch := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 
 	for _, scenario := range group.scenarios {
@@ -82,15 +82,14 @@ func (group *ConcurrentScenarioGroup) run(c *ScenarioContext) <-chan done {
 			duration := endAt.Sub(startAt)
 			cb(c.State, duration)
 		}
-		ch <- done{}
-		close(ch)
+		ch <- struct{}{}
 	}()
 
 	return ch
 }
 
-func (group *SeriesScenarioGroup) run(c *ScenarioContext) <-chan done {
-	ch := make(chan done, 1)
+func (group *SeriesScenarioGroup) run(c *ScenarioContext) chan struct{} {
+	ch := make(chan struct{}, 1)
 
 	go func() {
 		startAt := time.Now()
@@ -109,8 +108,7 @@ func (group *SeriesScenarioGroup) run(c *ScenarioContext) <-chan done {
 			duration := endAt.Sub(startAt)
 			cb(c.State, duration)
 		}
-		ch <- done{}
-		close(ch)
+		ch <- struct{}{}
 	}()
 
 	return ch

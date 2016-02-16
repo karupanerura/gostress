@@ -10,16 +10,16 @@ type DelayScenario struct {
 	OnComplete func(ScenarioState)
 }
 
-func (scenario *DelayScenario) run(c *ScenarioContext) <-chan done {
-	ch := make(chan done, 1)
-	ch <- done{}
-	close(ch)
+func (scenario *DelayScenario) run(c *ScenarioContext) chan struct{} {
+	ch := make(chan struct{}, 1)
+	ch <- struct{}{}
 
 	c.wg.Add(1)
 	go func() {
 		time.Sleep(scenario.Duration)
 		ch := scenario.Scenario.run(c)
 		<-ch
+		close(ch)
 		if cb := scenario.OnComplete; cb != nil {
 			cb(c.State)
 		}

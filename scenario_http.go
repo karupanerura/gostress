@@ -14,8 +14,8 @@ type HttpScenario struct {
 	OnError    func(ScenarioState, error)
 }
 
-func (scenario *HttpScenario) run(c *ScenarioContext) <-chan done {
-	ch := make(chan done, 1)
+func (scenario *HttpScenario) run(c *ScenarioContext) chan struct{} {
+	ch := make(chan struct{}, 1)
 	go func() {
 		if cb := scenario.BeforeRun; cb != nil {
 			cb(c.State, scenario)
@@ -35,8 +35,7 @@ func (scenario *HttpScenario) run(c *ScenarioContext) <-chan done {
 				panic(err)
 			}
 		}
-		ch <- done{}
-		close(ch)
+		ch <- struct{}{}
 	}()
 	return ch
 }
